@@ -1,0 +1,20 @@
+*.o
+*.d
+*.su
+*.cproject
+*.project.prefs
+*.elf
+*.map
+*.list
+*.srec
+*.cproject
+.settings/
+#exclusion of build folders
+build/
+debug/
+#exclusion of build folders and makefiles for Drivers library 
+Drivers/CMakeFiles/
+Drivers/cmake_install.cmake
+Drivers/Makefile
+#exclusion of Polyspace folders
+Testing/StaticTests/IgnitionController/
