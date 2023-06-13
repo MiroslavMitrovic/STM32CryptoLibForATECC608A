@@ -107,7 +107,7 @@ typedef struct ATCA_PACKED _atecc608_config
     uint8_t  Reserved2;
     uint8_t  CountMatch;
     uint8_t  ChipMode;
-    uint16_t SlotConfig[16];
+    uint16_t SlotConfig[16]; /* you can modify here the type of slot */
     uint8_t  Counter0[8];
     uint8_t  Counter1[8];
     uint8_t  UseLock;
@@ -123,7 +123,7 @@ typedef struct ATCA_PACKED _atecc608_config
     uint16_t SlotLocked;
     uint16_t ChipOptions;
     uint32_t X509format;
-    uint16_t KeyConfig[16];
+    uint16_t KeyConfig[16];  /*  You can set here the Type of key or data used in each slot. */
 } atecc608_config_t;
 
 #ifndef ATCA_NO_PRAGMA_PACK

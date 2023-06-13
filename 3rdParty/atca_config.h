@@ -22,4 +22,10 @@
 #define atca_delay_ms   hal_delay_ms
 #define atca_delay_us   hal_delay_us
 
+
+//atecc608_config_t atecc608_cfg;
+
+
+
+
 #endif /* ATCA_CONFIG_H_ */

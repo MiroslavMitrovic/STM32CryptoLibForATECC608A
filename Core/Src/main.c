@@ -60,6 +60,11 @@ uint8_t crc_TestVal[27] = {0x6C	,0x00,	0x00,	0x60,	0x85,	0xC5	,0x5C,	0xEE,	0x01,
 uint8_t crc_TestVal2 = 1;
 uint8_t crc_Val_LE[2] = {0};
 volatile uint8_t RxBufferLen = 0;
+volatile uint8_t idleStatus = 0;
+uint8_t bufferOut[128] = {0};
+uint8_t bufferIn[128] = {0};
+atecc608_config_t configZone;
+uint8_t *p_to_configZone = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,6 +75,7 @@ static void MX_SPI1_Init(void);
 static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 int find_I2C_deviceAddress(void);
+void atecc608_configure_config_zone(atecc608_config_t *configZone);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -112,12 +118,48 @@ int main(void)
  // AddressValue = find_I2C_deviceAddress();
   // initialize CryptoAuthLib for an ECC default I2C interface
 
-  atCRC(crc_len, &crc_TestVal[0], crc_Val_LE);
+
+
+  memset (bufferOut, 0x00, 128);
+      bufferIn [0] = 'a';
+      bufferIn [1] = 'b';
+      bufferIn [2] = 'c';
+      bufferIn [3] = 'd';
+
+
+// atca_trace_config( fopen("log/file1.txt", "w"));
+ atCRC(crc_len, &crc_TestVal[0], crc_Val_LE);
  atcab_init(&cfg_ateccx08a_i2c_default);
+ memset (bufferOut, 0x00, 128);
+// //First test - Reading serial number
+// if (atcab_read_serial_number(bufferOut) == ATCA_SUCCESS)
+// {
+//	 HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
+// }
+ memset (bufferOut, 0x00, 128);
+ //Second test - Reading device config
+ //delay_ms (2500);
+ if (atcab_read_config_zone(bufferOut) == ATCA_SUCCESS)
 
- atcab_random(&random_number[0]); // get a random number from the chip
+ {
+	 HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
+	 p_to_configZone =(uint8_t*) &configZone;
+	 for(int i = 0; i < sizeof(configZone); i++)
+	 {
+		*(p_to_configZone + i) = bufferOut[i];
+	 }
+	 //memcpy(&configZone,&bufferOut[0],sizeof(configZone));
+ }
 
-
+ //Third test - Reading device config
+ memset (bufferOut, 0x00, 128);
+ if (atcab_sha(4, bufferIn, bufferOut) == ATCA_SUCCESS)
+ {
+	 HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+ }
+ atcab_checkmac(mode, key_id, challenge, response, other_data)
+// atcab_random(&random_number[0]); // get a random number from the chip
+//atcab_write_config_zone(config_data);
 
   /* USER CODE END 2 */
 
@@ -125,6 +167,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  idleStatus = atcab_idle();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -360,6 +403,34 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void atecc608_configure_config_zone(atecc608_config_t *configZone)
+{
+	/*Write must be performed after the byte #16*/
+	configZone->I2C_Address = 0xC0;
+	configZone->Reserved1 = 0;
+	configZone->CountMatch = 0;
+	configZone->ChipMode = 0;
+
+
+/*	0x83, 0x20, //  Slot Config Slot 1
+	        0x85, 0x20, //  Slot Config Slot 2 		15-12 1 0 X X Never Writes are never permitted on this slot using the Write command.
+													Slots set to never can still be used as key storage
+	        0x8F, 0x20, //  Slot Config Slot 3
+	        0xC4, 0x8F, //  Slot Config Slot 4
+	        0x8F, 0x8F, //  Slot Config Slot 5
+	        0x8F, 0x8F, //  Slot Config Slot 6
+	        0x9F, 0x8F, //  Slot Config Slot 7
+	        0x0F, 0x0F, //  Slot Config Slot 8
+	        0x8F, 0x0F, //  Slot Config Slot 9
+	        0x8F, 0x0F, //  Slot Config Slot 10
+	        0x8F, 0x0F, //  Slot Config Slot 11
+	        0x8F, 0x0F, //  Slot Config Slot 12
+	        0x8F, 0x0F, //  Slot Config Slot 13
+	        0x00, 0x00, //  Slot Config Slot 14
+	        0x00, 0x00, //  Slot Config Slot 15
+	        0xAF, 0x8F, //  Slot Config Slot 16
+*/
+}
 int find_I2C_deviceAddress(void)
 {
 	uint8_t i=0;
