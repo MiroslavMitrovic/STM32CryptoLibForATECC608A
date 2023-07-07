@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "cryptoauthlib.h"
+#include "CryptoWrapper.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +31,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define BUFFER_SIZE 0x1FFFC
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -39,8 +41,12 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
+
+RNG_HandleTypeDef hrng;
 
 SPI_HandleTypeDef hspi1;
 
@@ -57,14 +63,14 @@ uint8_t crc_TestVal[31] ={ 0x23, 0xD0, 0x6C, 0x00, 0x00, 0x60, 0x02, 0x60, 0x85,
 uint8_t crc_TestVal[27] = {0x6C	,0x00,	0x00,	0x60,	0x85,	0xC5	,0x5C,	0xEE,	0x01,	0x39,	0x00,	0xC0,	0x00,	0x00,	0x00,	0x83,	0x20,	0x87, 0x20,
 0x8F,	0x20,	0xC4,	0x8F,	0x8F,	0x8F,	0x8F,	0x8F};
 
+
 uint8_t crc_TestVal2 = 1;
 uint8_t crc_Val_LE[2] = {0};
 volatile uint8_t RxBufferLen = 0;
 volatile uint8_t idleStatus = 0;
 uint8_t bufferOut[128] = {0};
 uint8_t bufferIn[128] = {0};
-atecc608_config_t configZone;
-uint8_t *p_to_configZone = NULL;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,9 +79,11 @@ static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_I2C2_Init(void);
+static void MX_RNG_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 int find_I2C_deviceAddress(void);
-void atecc608_configure_config_zone(atecc608_config_t *configZone);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -113,13 +121,22 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
- // MX_I2C2_Init();
+  MX_I2C2_Init();
+  MX_RNG_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
  // AddressValue = find_I2C_deviceAddress();
   // initialize CryptoAuthLib for an ECC default I2C interface
-
-
-
+  uint32_t BufferCount = BUFFER_SIZE /4;
+  uint32_t BufferCount2 = 1;
+  uint32_t myDataBuffer =(uint32_t*) 0x08040000;
+  uint8_t testByte = 0;
+  uint32_t R_ChecksumValue = 0;
+  const char *p_StartAddress = 0x08040000;
+  uint32_t u32_ChecksumValue = 0;
+  uint8_t _36thByte = 0;
+  uint8_t byteNumber = 36;
+  uint8_t ATCA_ReturnStatus = 0;
   memset (bufferOut, 0x00, 128);
       bufferIn [0] = 'a';
       bufferIn [1] = 'b';
@@ -127,39 +144,17 @@ int main(void)
       bufferIn [3] = 'd';
 
 
-// atca_trace_config( fopen("log/file1.txt", "w"));
- atCRC(crc_len, &crc_TestVal[0], crc_Val_LE);
- atcab_init(&cfg_ateccx08a_i2c_default);
- memset (bufferOut, 0x00, 128);
-// //First test - Reading serial number
-// if (atcab_read_serial_number(bufferOut) == ATCA_SUCCESS)
+//
+//// atca_trace_config( fopen("log/file1.txt", "w"));
+// //atCRC(crc_len, &crc_TestVal[0], crc_Val_LE);
+//u32_ChecksumValue = HAL_CRC_Accumulate(&hcrc, myDataBuffer, BufferCount);
+//R_ChecksumValue = BE_to_SE_convert(u32_ChecksumValue);
+// sha256( (uint8_t*)0x08000000, 0xFFD0u, bufferOut);
+// for(int i = 0; i < 8;i++)
 // {
-//	 HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET);
+// HAL_RNG_GenerateRandomNumber(&hrng, &random_number[i*4]);
 // }
- memset (bufferOut, 0x00, 128);
- //Second test - Reading device config
- //delay_ms (2500);
- if (atcab_read_config_zone(bufferOut) == ATCA_SUCCESS)
 
- {
-	 HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);
-	 p_to_configZone =(uint8_t*) &configZone;
-	 for(int i = 0; i < sizeof(configZone); i++)
-	 {
-		*(p_to_configZone + i) = bufferOut[i];
-	 }
-	 //memcpy(&configZone,&bufferOut[0],sizeof(configZone));
- }
-
- //Third test - Reading device config
- memset (bufferOut, 0x00, 128);
- if (atcab_sha(4, bufferIn, bufferOut) == ATCA_SUCCESS)
- {
-	 HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
- }
- atcab_checkmac(mode, key_id, challenge, response, other_data)
-// atcab_random(&random_number[0]); // get a random number from the chip
-//atcab_write_config_zone(config_data);
 
   /* USER CODE END 2 */
 
@@ -218,6 +213,32 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -285,6 +306,32 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief RNG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RNG_Init(void)
+{
+
+  /* USER CODE BEGIN RNG_Init 0 */
+
+  /* USER CODE END RNG_Init 0 */
+
+  /* USER CODE BEGIN RNG_Init 1 */
+
+  /* USER CODE END RNG_Init 1 */
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RNG_Init 2 */
+
+  /* USER CODE END RNG_Init 2 */
 
 }
 
@@ -403,34 +450,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void atecc608_configure_config_zone(atecc608_config_t *configZone)
-{
-	/*Write must be performed after the byte #16*/
-	configZone->I2C_Address = 0xC0;
-	configZone->Reserved1 = 0;
-	configZone->CountMatch = 0;
-	configZone->ChipMode = 0;
 
-
-/*	0x83, 0x20, //  Slot Config Slot 1
-	        0x85, 0x20, //  Slot Config Slot 2 		15-12 1 0 X X Never Writes are never permitted on this slot using the Write command.
-													Slots set to never can still be used as key storage
-	        0x8F, 0x20, //  Slot Config Slot 3
-	        0xC4, 0x8F, //  Slot Config Slot 4
-	        0x8F, 0x8F, //  Slot Config Slot 5
-	        0x8F, 0x8F, //  Slot Config Slot 6
-	        0x9F, 0x8F, //  Slot Config Slot 7
-	        0x0F, 0x0F, //  Slot Config Slot 8
-	        0x8F, 0x0F, //  Slot Config Slot 9
-	        0x8F, 0x0F, //  Slot Config Slot 10
-	        0x8F, 0x0F, //  Slot Config Slot 11
-	        0x8F, 0x0F, //  Slot Config Slot 12
-	        0x8F, 0x0F, //  Slot Config Slot 13
-	        0x00, 0x00, //  Slot Config Slot 14
-	        0x00, 0x00, //  Slot Config Slot 15
-	        0xAF, 0x8F, //  Slot Config Slot 16
-*/
-}
 int find_I2C_deviceAddress(void)
 {
 	uint8_t i=0;
