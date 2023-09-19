@@ -47,6 +47,8 @@ const uint8_t Secret[] ={
 };
 
 
+
+
 atecc608_config_t configZoneRead;
 atecc608_config_t configZoneWrite;
 uint8_t *p_to_configZone = NULL;
@@ -56,14 +58,14 @@ uint8_t *p_to_configZoneWrite = NULL;
 
 /*TODO
  * 		/* Write Public Key */
-//ATCA_ReturnStatus = atcab_write_pubkey(PUBLIC_KEY_SLOT, &PublicKey[0]);
+
 /* Write AES Keys */
 //ATCA_ReturnStatus = atcab_write_zone(ATCA_ZONE_DATA, (uint16_t)AES_KEY1_SLOT, 0, 0, &AES_Key1[0], 32);
 //ATCA_ReturnStatus = atcab_write_zone(ATCA_ZONE_DATA, (uint16_t)AES_KEY2_SLOT, 0, 0, &AES_Key2[0], 32);
 ///* Write Secrets */
 //ATCA_ReturnStatus = atcab_write_zone(ATCA_ZONE_DATA, (uint16_t)SECRETS_SLOT, 0, 0, &Secret[0], 32);
 ///* Write ENC Secrets */
-//atcab_write_enc(key_id, block, data, enc_key, enc_key_id)
+
 /* Write Private Key */ /*
 //ATCA_ReturnStatus = atcab_priv_write(PRIVATE_KEY_SLOT, &PrivateKey[0], 0, NULL);
  */

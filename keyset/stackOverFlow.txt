@@ -1,0 +1,14 @@
+ATECC508A Public Key configuration for ECDSA and Configuration for storing Secrets 
+
+
+Hello everyone, 
+
+I'm having issues with the configuration of ATECCX08 device. I've tried to configure the device for storing the public key that I wanted to use for verification of ECDSA signature and additionally to store the secret that I will use in my Challenge-Response algorithm. 
+
+I managed to get a hold of the ATECC508A full datasheet where the configuration registers description is available. Here is the link to the datasheet: 
+https://www.alldatasheet.com/datasheet-pdf/pdf/1005085/MICROCHIP/ATECC508A.html 
+
+Firstly I've managed to integrate the Cryptoauth Lib from microchip and get it to work, afterwards I did the configuration and writing of the data. 
+Public key is located in the slot number 10, while secrets are located in slots 13 and 14. 
+
+When I tried to perform ECDSA verification I've got 
